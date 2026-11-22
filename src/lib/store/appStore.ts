@@ -5,6 +5,7 @@ import { createPersistentStore, type PersistentStore } from "@/lib/storage/local
 import { SAMPLE_WARDROBE } from "@/lib/wardrobe/sampleWardrobe";
 import type { SavedOutfit } from "@/types/outfit";
 import type { Garment, WardrobeSource } from "@/types/wardrobe";
+import type { WeatherLocation } from "@/types/weather";
 
 const KEY_PREFIX = "smart-closet:v1:";
 
@@ -37,3 +38,14 @@ export function newId(prefix: string): string {
       : Math.random().toString(36).slice(2, 10);
   return `${prefix}-${Date.now().toString(36)}-${random}`;
 }
+
+const isLocation = (v: unknown): v is WeatherLocation | null =>
+  v === null ||
+  (typeof v === "object" && v !== null && "latitude" in v && "longitude" in v && "name" in v);
+
+/** City picked with the search box; null means "use geolocation". */
+export const chosenLocationStore = createPersistentStore<WeatherLocation | null>(
+  `${KEY_PREFIX}location`,
+  null,
+  isLocation,
+);
