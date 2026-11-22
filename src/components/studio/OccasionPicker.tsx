@@ -8,7 +8,7 @@ const ICONS = { office: Briefcase, casual: Coffee, dinner: Wine, sport: Dumbbell
 
 export function OccasionPicker({ value, onChange }: { value: Occasion; onChange: (o: Occasion) => void }) {
   return (
-    <fieldset>
+    <fieldset className="min-w-0">
       <legend className="eyebrow mb-3">{copy.studio.occasionLabel}</legend>
       <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:flex-wrap">
         {OCCASIONS.map((o) => {

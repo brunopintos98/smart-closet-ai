@@ -17,7 +17,7 @@ function SavedCard({ outfit, onDelete }: { outfit: SavedOutfit; onDelete: () => 
     <li className="animate-rise rounded-3xl bg-surface p-4 ring-1 ring-line">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm capitalize text-muted">{dateFormat.format(new Date(outfit.savedAt))}</p>
+          <p className="text-sm text-muted first-letter:uppercase">{dateFormat.format(new Date(outfit.savedAt))}</p>
           <p className="font-serif text-xl">{occasionLabels[outfit.occasion]}</p>
         </div>
         <button type="button" onClick={onDelete} className="btn btn-ghost -mr-2 p-2 text-danger" aria-label={copy.saved.deleteLabel}>
