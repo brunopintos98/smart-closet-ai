@@ -166,10 +166,13 @@ export function recommendOutfits(input: RecommendationInput): RecommendationResu
           c.footwear,
         );
         if (!needsOuterwear && c.outerwear.length > 0) {
-          scored.reasons = [
-            ...scored.reasons.slice(0, MAX_REASONS - 1),
-            { code: "skippedOuterwearWarm", temperature: weather.morning.temperature },
-          ].sort((a, b) => REASON_PRIORITY[a.code] - REASON_PRIORITY[b.code]);
+          const skipped: Reason = {
+            code: "skippedOuterwearWarm",
+            temperature: weather.morning.temperature,
+          };
+          scored.reasons = [...scored.reasons.slice(0, MAX_REASONS - 1), skipped].sort(
+            (a, b) => REASON_PRIORITY[a.code] - REASON_PRIORITY[b.code],
+          );
         }
         outfits.push(scored);
       }
