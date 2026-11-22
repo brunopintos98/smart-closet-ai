@@ -12,8 +12,9 @@ Formato: fecha · decisión · motivo · alternativas descartadas.
 
 ### 2. Datos solo en el navegador
 - **Decisión:** metadatos en `localStorage`, fotos en IndexedDB (`idb-keyval`). Sin cuentas, base de datos ni servidor con datos personales.
-- **Motivo:** privacidad por diseño. Fotos de ropa y hábitos de vestimenta son datos personales, y en algunos casos pueden revelar datos sensibles (religión, salud). Al no recolectarlos, el prototipo evita las obligaciones de responsable de bases de datos de la Ley 18.331 (Uruguay) y la Ley 25.326 (Argentina): registro de bases, consentimiento informado, derechos de acceso/rectificación/supresión, medidas de seguridad. El usuario puede borrar todo desde el perfil.
+- **Motivo:** privacidad por diseño. Fotos de ropa y hábitos de vestimenta son datos personales, y en algunos casos pueden revelar datos sensibles (religión, salud). Como el prototipo no los recolecta ni los guarda en servidores propios, reduce al mínimo las obligaciones que la Ley 18.331 (Uruguay) y la Ley 25.326 (Argentina) imponen a quien mantiene bases de datos personales (registro, consentimiento informado, derechos de acceso/rectificación/supresión, medidas de seguridad). Esto es una lectura del equipo, no un dictamen legal: si V2 suma cuentas o sincronización, hay que revisarlo con asesoría. El usuario puede borrar todo desde el perfil.
 - **Costo aceptado:** no hay sincronización entre dispositivos y los datos se pierden si se borra el navegador (queda como "Próximamente").
+- **Lo que sí sale del dispositivo:** coordenadas redondeadas (~1 km) o el nombre de la ciudad buscada, que pasan por nuestro route handler hacia Open-Meteo.
 - **Fallback:** si el almacenamiento está bloqueado (modo incógnito estricto), la app funciona en memoria y lo avisa.
 
 ### 3. Open-Meteo como proveedor de clima
