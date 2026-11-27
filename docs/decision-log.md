@@ -72,7 +72,7 @@ Formato: fecha · decisión · motivo · alternativas descartadas.
 
 ### 14. Protecciones contra abuso (sin login)
 - **Decisión:** (1) crédito prepago chico en Anthropic, sin recarga automática, en una key y workspace propios del proyecto; (2) tope diario global en Upstash Redis (default 300 fotos por día), reservado **antes** de la llamada paga; (4) solo `image/jpeg` de hasta 600 KB y 1100 px, instrucciones fijas sin texto del usuario, respuesta acotada; (6) la key vive solo en el servidor.
-- **Motivo:** sin login no se puede impedir el abuso, pero sí acotar el peor caso. Con Haiku y el tope por defecto, el gasto máximo por día ronda US$ 0,15 a 0,30.
+- **Motivo:** sin login no se puede impedir el abuso, pero sí acotar el peor caso. Con Haiku y el tope por defecto: ~US$ 0,15 por día con el consumo estimado y como mucho ~US$ 0,35 en el peor caso (300 llamadas que agoten los 2.048 tokens de salida).
 - **Falla cerrada:** en producción, sin Redis configurado (o si no responde), la IA se apaga. En desarrollo el contador es en memoria.
 - **Descartado por ahora:** límite por IP (aporta poco con un tope global chico) y código de acceso para la demo (fácil de sumar si hace falta).
 
