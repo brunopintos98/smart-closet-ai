@@ -5,7 +5,9 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import { categoryLabels, colorLabels, copy, formalityLabels, occasionLabels, warmthLabels } from "@/copy/es-AR";
 import { compressImage, ImageProcessingError } from "@/lib/image/compress";
 import { COLORS } from "@/lib/recommendation/colors";
-import { deletePhoto, savePhoto } from "@/lib/storage/photos";
+import { deletePhoto, loadPhoto, savePhoto } from "@/lib/storage/photos";
+import { fetchCatalogEnabled, requestCatalog } from "@/lib/catalog/client";
+import type { CatalogSuggestion } from "@/lib/catalog/schema";
 import { garmentsStore, newId } from "@/lib/store/appStore";
 import {
   COLOR_IDS,
@@ -74,6 +76,16 @@ export function GarmentForm({
   const [errors, setErrors] = useState<{ name?: string; occasions?: string }>({});
   const fileInput = useRef<HTMLInputElement>(null);
   const existingUrl = usePhotoUrl(removePhoto ? undefined : garment?.photoId);
+  const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
+  const [ai, setAi] = useState<{ busy: boolean; message?: string; error?: boolean }>({ busy: false });
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchCatalogEnabled().then((enabled) => !cancelled && setAiEnabled(enabled));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => () => {
     if (photo) URL.revokeObjectURL(photo.url);
@@ -130,6 +142,33 @@ export function GarmentForm({
   };
 
   const previewUrl = photo?.url ?? existingUrl;
+  const hasPhoto = Boolean(photo || (!removePhoto && garment?.photoId));
+
+  const applySuggestion = (s: CatalogSuggestion) =>
+    setDraft((d) => ({
+      ...d,
+      ...s,
+      // Keep what the user already typed or picked.
+      name: d.name.trim() ? d.name : s.name,
+      occasions: s.occasions.length ? s.occasions : d.occasions,
+    }));
+
+  const catalogWithAi = async () => {
+    const blob = photo?.blob ?? (garment?.photoId && !removePhoto ? await loadPhoto(garment.photoId) : undefined);
+    if (!blob) {
+      setAi({ busy: false, error: true, message: copy.garmentForm.aiNeedsPhoto });
+      return;
+    }
+    setAi({ busy: true, message: copy.garmentForm.aiWorking });
+    const result = await requestCatalog(blob);
+    if (result.ok) {
+      applySuggestion(result.suggestion);
+      setErrors({});
+      setAi({ busy: false, message: copy.garmentForm.aiDone });
+    } else {
+      setAi({ busy: false, error: true, message: copy.garmentForm.aiErrors[result.code] });
+    }
+  };
 
   return (
     <Sheet open={open} onClose={onClose} title={garment ? copy.garmentForm.editTitle : copy.garmentForm.addTitle}>
@@ -179,12 +218,34 @@ export function GarmentForm({
           </div>
           <div className="mt-3 rounded-2xl border border-dashed border-line p-3">
             <div className="flex items-center justify-between gap-2">
-              <button type="button" disabled className="btn btn-secondary py-2 text-sm">
-                <Wand2 className="size-4" /> {copy.garmentForm.aiButton}
+              <button
+                type="button"
+                disabled={!aiEnabled || !hasPhoto || ai.busy || photoState.busy}
+                onClick={catalogWithAi}
+                className="btn btn-secondary py-2 text-sm"
+              >
+                {ai.busy ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
+                {copy.garmentForm.aiButton}
               </button>
-              <StatusBadge status="comingSoon" />
+              {aiEnabled !== null && <StatusBadge status={aiEnabled ? "working" : "comingSoon"} />}
             </div>
-            <p className="mt-2 text-xs text-muted">{copy.garmentForm.aiNote}</p>
+            <p className="mt-2 text-xs text-muted">
+              {aiEnabled === null
+                ? copy.garmentForm.aiChecking
+                : !aiEnabled
+                  ? copy.garmentForm.aiNote
+                  : hasPhoto
+                    ? copy.garmentForm.aiConsent
+                    : copy.garmentForm.aiNeedsPhoto}
+            </p>
+            {ai.message && (
+              <p
+                className={`mt-2 text-sm ${ai.error ? "text-danger" : "text-status-working"}`}
+                role={ai.error ? "alert" : "status"}
+              >
+                {ai.message}
+              </p>
+            )}
           </div>
         </Field>
 
@@ -296,7 +357,7 @@ export function GarmentForm({
 
         <div className="sticky bottom-0 -mx-5 flex gap-2 bg-paper px-5 pt-2">
           <button type="button" className="btn btn-secondary flex-1" onClick={onClose}>{copy.common.cancel}</button>
-          <button type="submit" className="btn btn-primary flex-1" disabled={photoState.busy}>{copy.garmentForm.save}</button>
+          <button type="submit" className="btn btn-primary flex-1" disabled={photoState.busy || ai.busy}>{copy.garmentForm.save}</button>
         </div>
       </form>
     </Sheet>
