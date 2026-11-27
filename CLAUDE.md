@@ -2,7 +2,7 @@
 
 @AGENTS.md
 
-Prototype V1 of a style assistant (MBA project, UCEMA). Next.js App Router + TypeScript (strict) + Tailwind v4. No backend beyond route handlers, no database, no login, no paid APIs or LLMs in V1.
+Style assistant prototype (MBA project, UCEMA), now V2. Next.js App Router + TypeScript (strict) + Tailwind v4. No backend beyond route handlers, no database, no login. The only paid API is AI cataloging (Claude Haiku 5.5 via `/api/catalog`); outfit recommendation is still rule-based.
 
 ## Languages
 - **User-facing text: Spanish (Río de la Plata), voseo** ("elegí", "agregá", "tenés", "probá otra"). Short, warm, no hype.
@@ -26,6 +26,8 @@ src/lib/recommendation/  pure scoring rules + RuleBasedRecommender (no React imp
 src/lib/weather/    Open-Meteo URL builders/parsers, client fetchers, useWeather hook, manual fallback
 src/lib/storage/    localStorage store (memory fallback), IndexedDB photos (memory fallback)
 src/lib/image/      client-side photo resize/compression
+src/lib/catalog/    AI cataloging: output schema + normalization, JPEG checks, limits, client fetchers (pure, tested)
+src/lib/server/     server-only helpers: upstream fetch/cache, daily quota (Upstash), Anthropic catalog call
 src/lib/store/      persistent app state via useSyncExternalStore
 src/types/          domain types
 docs/decision-log.md  append an entry for every relevant technical decision
@@ -46,4 +48,6 @@ docs/decision-log.md  append an entry for every relevant technical decision
 - The React lint rules forbid synchronous `setState` inside effects; derive state or set it from async callbacks.
 - A `<fieldset>` with a horizontal scroller needs `min-w-0`, or it widens the page on phones.
 - Open-Meteo free tier: non-commercial, rate-limited per IP, requires the CC BY 4.0 attribution link in the footer. Do not call it from the client directly.
-- No secrets and no required env vars in V1.
+- Env vars (all optional for the base app): `ANTHROPIC_API_KEY`, `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` (or `KV_REST_API_*`), `CATALOG_DAILY_LIMIT`. Never commit them; `.env*` is gitignored.
+- AI cataloging must stay bounded: validate the image before any paid call, reserve the daily slot first, keep the prompt fixed (no user text reaches the model), and fail closed in production without Redis. Any new paid call needs the same treatment and a decision-log entry.
+- Data leaving the device must be announced in the UI before it is sent and listed in `copy.about.privacy`.

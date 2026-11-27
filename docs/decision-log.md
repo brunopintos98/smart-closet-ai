@@ -57,3 +57,29 @@ Formato: fecha · decisión · motivo · alternativas descartadas.
 ### 11. Chat simulado por palabras clave
 - **Decisión:** detección de palabras clave sin tildes, por palabra completa y con prioridad (evento formal > deporte > oficina > cena > casual).
 - **Motivo:** muestra el flujo conversacional esperado sin costo de LLM. Está etiquetado como "Simulado".
+
+## V2 (27/11/2026)
+
+### 12. Primera función con IA: "Catalogar con IA", no el recomendador con LLM
+- **Decisión:** la primera función de IA completa los datos de una prenda a partir de su foto.
+- **Motivo:** el cuello de botella de V1 es cargar la ropa propia (7 campos por prenda). Sin un guardarropa propio, el recomendador solo funciona con la muestra. El motor de reglas ya elige y explica bien; un LLM ahí sumaría costo y latencia con poca mejora visible. Queda para después, cuando los usuarios tengan su ropa cargada.
+
+### 13. Modelo: Claude Haiku 5.5, esfuerzo bajo, structured outputs
+- **Decisión:** `claude-haiku-5-5`, `effort: "low"`, `max_tokens: 2048`, respuesta con `output_config.format` (esquema Zod) y validación posterior propia (`normalizeCatalogOutput`).
+- **Motivo:** es una clasificación simple de una imagen. Precios oficiales consultados el 27/11/2026: Haiku 5.5 US$ 0,10 / 0,50 por millón de tokens (entrada / salida) vs. Sonnet 5.5 US$ 2 / 10. Una foto de 1024 px son ~1.000 a 1.370 tokens de imagen (`⌈ancho/28⌉ × ⌈alto/28⌉`). Estimado: ~US$ 0,0005 por foto con Haiku vs. ~US$ 0,009 con Sonnet. Las estimaciones se confirman con los logs `catalog: usage`.
+- **Pendiente:** comparar Haiku vs. Sonnet con ~20 fotos reales antes de una versión productiva.
+- **Fallback:** cualquier error deja el formulario manual funcionando con un mensaje claro.
+
+### 14. Protecciones contra abuso (sin login)
+- **Decisión:** (1) crédito prepago chico en Anthropic, sin recarga automática, en una key y workspace propios del proyecto; (2) tope diario global en Upstash Redis (default 300 fotos por día), reservado **antes** de la llamada paga; (4) solo `image/jpeg` de hasta 600 KB y 1100 px, instrucciones fijas sin texto del usuario, respuesta acotada; (6) la key vive solo en el servidor.
+- **Motivo:** sin login no se puede impedir el abuso, pero sí acotar el peor caso. Con Haiku y el tope por defecto, el gasto máximo por día ronda US$ 0,15 a 0,30.
+- **Falla cerrada:** en producción, sin Redis configurado (o si no responde), la IA se apaga. En desarrollo el contador es en memoria.
+- **Descartado por ahora:** límite por IP (aporta poco con un tope global chico) y código de acceso para la demo (fácil de sumar si hace falta).
+
+### 15. Privacidad: la foto sale del dispositivo solo si el usuario lo pide
+- **Decisión:** la foto se envía a Anthropic únicamente al tocar "Catalogar con IA", con un aviso visible antes del botón. El servidor no la guarda ni la registra en logs (solo se registran conteos de tokens).
+- **Motivo:** V1 prometía que las fotos nunca salían del dispositivo. Romper esa promesa en silencio no es aceptable. Respecto de las leyes 25.326 y 18.331, enviar fotos a un proveedor externo es una transferencia de datos que hay que informar. Esto es una lectura del equipo, no un dictamen legal; para una versión productiva hay que revisar los términos de retención de datos de Anthropic y redactar una política de privacidad.
+
+### 16. Contador diario con Upstash Redis
+- **Decisión:** `@upstash/redis` (REST), con las variables `UPSTASH_REDIS_REST_*` o las `KV_REST_API_*` que carga la integración de Vercel.
+- **Motivo:** las funciones de Vercel corren en varias instancias sin memoria compartida, así que un contador en memoria no sirve como tope real. Upstash funciona por HTTP (no necesita conexiones persistentes) y tiene plan gratis.

@@ -1,4 +1,4 @@
-# Smart Closet AI · Prototipo V1
+# Smart Closet AI · Prototipo V2
 
 Asistente de estilo que te ayuda a decidir **qué ponerte hoy con la ropa que ya tenés**, según la ocasión y el clima del día.
 
@@ -20,6 +20,7 @@ Proyecto de MBA (Product, Technology & Operations 4.0, UCEMA). Es una primera ve
 | Guardarropa | Toggle "De muestra" (13 prendas) / "Mi ropa", filtros por categoría, alta con foto (cámara o galería), edición y borrado. |
 | Guardados | Conjuntos con fecha, ocasión y clima del día. Se pueden borrar. |
 | Borrar mis datos | Desde el perfil, borra prendas, fotos y conjuntos del navegador. |
+| Catalogar con IA (V2) | En el formulario de prenda, Claude Haiku 5.5 completa los datos a partir de la foto; el usuario revisa antes de guardar. Requiere configuración (ver abajo); si falta, el botón aparece como "Próximamente". |
 
 ### 🟡 Simulado
 | Función | Detalle |
@@ -28,7 +29,6 @@ Proyecto de MBA (Product, Technology & Operations 4.0, UCEMA). Es una primera ve
 | Prendas de muestra | Ilustraciones SVG propias, coloreadas según la prenda. No son fotos ni marcas reales. |
 
 ### 🟣 Próximamente (visible, no funcional)
-- Catalogar con IA (dentro del formulario de prenda).
 - Asistente de compras por talle, color y presupuesto (sección Compras; el botón "Avisame cuando esté" solo muestra un mensaje y no guarda nada).
 - Avatar con tus medidas, iniciar sesión y sincronizar entre dispositivos (perfil, arriba a la derecha).
 - Compartir conjunto.
@@ -68,7 +68,10 @@ flowchart LR
   OM["Open-Meteo<br/>forecast + geocoding"]
   UI -- "lat/lon redondeadas" --> W --> OM
   UI -- "nombre de ciudad" --> G --> OM
-  REC -. "V2: LlmRecommender con fallback a reglas" .-> LLM["LLM (no implementado)"]
+  C["/api/catalog<br/>JPEG ≤ 600 KB · tope diario"]
+  UI -- "foto (solo si tocás Catalogar con IA)" --> C --> AN["Anthropic API<br/>Claude Haiku 5.5"]
+  C <--> R[("Upstash Redis<br/>contador diario")]
+  REC -. "futuro: LlmRecommender con fallback a reglas" .-> LLM["LLM (no implementado)"]
 ```
 
 - **Sin backend propio ni base de datos.** Todo lo del usuario queda en el navegador.
@@ -114,7 +117,7 @@ npm install
 npm run dev
 ```
 
-Abrí http://localhost:3000. No hace falta ninguna variable de entorno.
+Abrí http://localhost:3000. No hace falta ninguna variable de entorno para la app base. Para "Catalogar con IA" en local alcanza con `ANTHROPIC_API_KEY` en `.env.local` (en desarrollo el tope diario se cuenta en memoria).
 
 ```bash
 npm test
@@ -150,6 +153,20 @@ vercel
 vercel --prod
 ```
 
+## Configuración de "Catalogar con IA" (V2)
+
+La función queda **apagada** si falta alguna de estas variables. La app sigue funcionando con carga manual.
+
+| Variable | Obligatoria | Qué es |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | Sí | API key de Anthropic. Usá una key propia del proyecto, en un workspace separado, con crédito prepago chico y sin recarga automática (es el tope de gasto real). |
+| `UPSTASH_REDIS_REST_URL` y `UPSTASH_REDIS_REST_TOKEN` (o `KV_REST_API_URL` y `KV_REST_API_TOKEN`) | Sí, en producción | Contador del tope diario compartido entre instancias. Si faltan en producción, la IA se apaga (falla cerrada). |
+| `CATALOG_DAILY_LIMIT` | No (300) | Fotos analizadas por día entre todos los usuarios. |
+
+En Vercel: Project → Settings → Environment Variables, y volvé a desplegar. Para Redis, la integración de Upstash del Marketplace de Vercel carga las variables sola.
+
+**Protecciones contra abuso:** (1) tope de gasto con crédito prepago en Anthropic; (2) tope diario global reservado antes de cada llamada; (4) solo JPEG de hasta 600 KB y 1100 px, instrucciones fijas sin texto del usuario y respuesta acotada a 2048 tokens; (6) la key vive solo en el servidor. Costo estimado: ~US$ 0,0005 por foto (a confirmar con los logs `catalog: usage`).
+
 ## Open-Meteo: términos de uso
 
 Revisados el 22/11/2026 en https://open-meteo.com/en/terms y https://open-meteo.com/en/licence:
@@ -160,7 +177,7 @@ Revisados el 22/11/2026 en https://open-meteo.com/en/terms y https://open-meteo.
 
 ## Privacidad
 
-No hay cuentas ni servidores con datos personales. Las prendas, fotos y conjuntos quedan solo en el navegador. Al servidor llegan las coordenadas redondeadas a 2 decimales (~1 km), que se reenvían a Open-Meteo, y el nombre de la ciudad buscada. Ver `docs/decision-log.md`.
+No hay cuentas ni servidores con datos personales. Las prendas, fotos y conjuntos quedan solo en el navegador. **Excepción V2:** al tocar "Catalogar con IA", esa foto se envía a Anthropic a través de nuestro servidor, que no la guarda; la app lo avisa antes de enviarla. Al servidor llegan las coordenadas redondeadas a 2 decimales (~1 km), que se reenvían a Open-Meteo, y el nombre de la ciudad buscada. Ver `docs/decision-log.md`.
 
 ## Documentación
 
